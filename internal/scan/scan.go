@@ -40,6 +40,9 @@ type Finding struct {
 type Options struct {
 	EntropyThreshold float64
 	MinLength        int
+	// Ignore lists additional gitignore-style patterns for Dir to skip, on
+	// top of DefaultIgnore. Unused by File.
+	Ignore []string
 }
 
 // DefaultOptions returns the default scan Options.
