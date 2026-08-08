@@ -24,7 +24,11 @@ func main() {
 	}
 
 	for _, f := range findings {
-		fmt.Printf("%s:%d: possible secret (entropy %.2f): %s\n", f.Path, f.Line, f.Entropy, f.Token)
+		if f.Detector == "entropy" {
+			fmt.Printf("%s:%d: possible secret (entropy %.2f): %s\n", f.Path, f.Line, f.Entropy, f.Token)
+		} else {
+			fmt.Printf("%s:%d: possible secret (%s): %s\n", f.Path, f.Line, f.Detector, f.Token)
+		}
 	}
 
 	if len(findings) > 0 {

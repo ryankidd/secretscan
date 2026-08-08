@@ -23,9 +23,16 @@ const trimSet = "\"'`,;:(){}[]<>"
 
 // Finding is a single possible secret found in a file.
 type Finding struct {
-	Path    string
-	Line    int
-	Token   string
+	Path string
+	Line int
+	// Token is the matched text: the full regex match for pattern-based
+	// detectors, or the flagged token for entropy-based findings.
+	Token string
+	// Detector names which Detector produced this finding, or "entropy"
+	// for entropy-based findings.
+	Detector string
+	// Entropy is the Shannon entropy of Token, in bits per character.
+	// Zero for pattern-based findings.
 	Entropy float64
 }
 
@@ -56,7 +63,20 @@ func File(path string, opts Options) ([]Finding, error) {
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
-		for _, token := range strings.Fields(scanner.Text()) {
+		line := scanner.Text()
+
+		for _, d := range Detectors {
+			for _, match := range d.Pattern.FindAllString(line, -1) {
+				findings = append(findings, Finding{
+					Path:     path,
+					Line:     lineNum,
+					Token:    match,
+					Detector: d.Name,
+				})
+			}
+		}
+
+		for _, token := range strings.Fields(line) {
 			token = strings.Trim(token, trimSet)
 			if len(token) < opts.MinLength {
 				continue
@@ -68,10 +88,11 @@ func File(path string, opts Options) ([]Finding, error) {
 			}
 
 			findings = append(findings, Finding{
-				Path:    path,
-				Line:    lineNum,
-				Token:   token,
-				Entropy: entropy,
+				Path:     path,
+				Line:     lineNum,
+				Token:    token,
+				Detector: "entropy",
+				Entropy:  entropy,
 			})
 		}
 	}
