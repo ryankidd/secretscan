@@ -23,20 +23,20 @@ const trimSet = "\"'`,;:(){}[]<>"
 
 // Finding is a single possible secret found in a file.
 type Finding struct {
-	Path string
-	Line int
+	Path string `json:"path"`
+	Line int    `json:"line"`
 	// Token is the matched text: the full regex match for pattern-based
 	// detectors, or the flagged token for entropy-based findings.
-	Token string
+	Token string `json:"token"`
 	// Detector names which Detector produced this finding, or "entropy"
 	// for entropy-based findings.
-	Detector string
+	Detector string `json:"detector"`
 	// Entropy is the Shannon entropy of Token, in bits per character.
 	// Zero for pattern-based findings.
-	Entropy float64
+	Entropy float64 `json:"entropy,omitempty"`
 	// Commit is the commit hash that introduced Token, set only by
 	// GitHistory. Empty for File and Dir findings.
-	Commit string
+	Commit string `json:"commit,omitempty"`
 }
 
 // Options controls scan behavior.

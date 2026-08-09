@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -25,12 +26,18 @@ func (i *ignoreList) Set(v string) error {
 func main() {
 	var ignore ignoreList
 	var history bool
+	var format string
 	flag.Var(&ignore, "ignore", "glob pattern to skip when scanning a directory (repeatable); suffix with / to match directories only")
 	flag.BoolVar(&history, "history", false, "scan git commit history instead of the working tree; the argument is a path to a git repository")
+	flag.StringVar(&format, "format", "text", "output format: text or json")
 	flag.Parse()
 	args := flag.Args()
 	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: secretscan [-ignore pattern] [-history] <file|directory>")
+		fmt.Fprintln(os.Stderr, "usage: secretscan [-ignore pattern] [-history] [-format text|json] <file|directory>")
+		os.Exit(2)
+	}
+	if format != "text" && format != "json" {
+		fmt.Fprintf(os.Stderr, "secretscan: unknown format %q\n", format)
 		os.Exit(2)
 	}
 
@@ -57,6 +64,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	if format == "json" {
+		printJSON(findings)
+	} else {
+		printText(findings)
+	}
+
+	if len(findings) > 0 {
+		os.Exit(1)
+	}
+}
+
+// printText writes findings in the default human-readable format.
+func printText(findings []scan.Finding) {
 	for _, f := range findings {
 		loc := fmt.Sprintf("%s:%d", f.Path, f.Line)
 		if f.Commit != "" {
@@ -69,8 +89,18 @@ func main() {
 			fmt.Printf("%s: possible secret (%s): %s\n", loc, f.Detector, f.Token)
 		}
 	}
+}
 
-	if len(findings) > 0 {
+// printJSON writes findings as a JSON array, for machine consumption.
+func printJSON(findings []scan.Finding) {
+	if findings == nil {
+		findings = []scan.Finding{}
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(findings); err != nil {
+		fmt.Fprintln(os.Stderr, "secretscan:", err)
 		os.Exit(1)
 	}
 }
