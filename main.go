@@ -11,6 +11,14 @@ import (
 	"github.com/ryankidd/secretscan/internal/scan"
 )
 
+// Exit codes distinguish "the scan ran and found something" from "the scan
+// itself failed," so a CI step can tell the two apart.
+const (
+	exitClean    = 0
+	exitFindings = 1
+	exitError    = 2
+)
+
 // ignoreList collects repeated -ignore flag values into a slice.
 type ignoreList []string
 
@@ -34,11 +42,11 @@ func main() {
 	args := flag.Args()
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "usage: secretscan [-ignore pattern] [-history] [-format text|json] <file|directory>")
-		os.Exit(2)
+		os.Exit(exitError)
 	}
 	if format != "text" && format != "json" {
 		fmt.Fprintf(os.Stderr, "secretscan: unknown format %q\n", format)
-		os.Exit(2)
+		os.Exit(exitError)
 	}
 
 	opts := scan.DefaultOptions()
@@ -61,7 +69,7 @@ func main() {
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "secretscan:", err)
-		os.Exit(1)
+		os.Exit(exitError)
 	}
 
 	if format == "json" {
@@ -71,8 +79,9 @@ func main() {
 	}
 
 	if len(findings) > 0 {
-		os.Exit(1)
+		os.Exit(exitFindings)
 	}
+	os.Exit(exitClean)
 }
 
 // printText writes findings in the default human-readable format.
@@ -101,6 +110,6 @@ func printJSON(findings []scan.Finding) {
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(findings); err != nil {
 		fmt.Fprintln(os.Stderr, "secretscan:", err)
-		os.Exit(1)
+		os.Exit(exitError)
 	}
 }
