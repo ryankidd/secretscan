@@ -34,6 +34,9 @@ type Finding struct {
 	// Entropy is the Shannon entropy of Token, in bits per character.
 	// Zero for pattern-based findings.
 	Entropy float64
+	// Commit is the commit hash that introduced Token, set only by
+	// GitHistory. Empty for File and Dir findings.
+	Commit string
 }
 
 // Options controls scan behavior.
@@ -66,37 +69,10 @@ func File(path string, opts Options) ([]Finding, error) {
 	lineNum := 0
 	for scanner.Scan() {
 		lineNum++
-		line := scanner.Text()
-
-		for _, d := range Detectors {
-			for _, match := range d.Pattern.FindAllString(line, -1) {
-				findings = append(findings, Finding{
-					Path:     path,
-					Line:     lineNum,
-					Token:    match,
-					Detector: d.Name,
-				})
-			}
-		}
-
-		for _, token := range strings.Fields(line) {
-			token = strings.Trim(token, trimSet)
-			if len(token) < opts.MinLength {
-				continue
-			}
-
-			entropy := ShannonEntropy(token)
-			if entropy < opts.EntropyThreshold {
-				continue
-			}
-
-			findings = append(findings, Finding{
-				Path:     path,
-				Line:     lineNum,
-				Token:    token,
-				Detector: "entropy",
-				Entropy:  entropy,
-			})
+		for _, m := range findMatches(scanner.Text(), opts) {
+			m.Path = path
+			m.Line = lineNum
+			findings = append(findings, m)
 		}
 	}
 
@@ -105,4 +81,40 @@ func File(path string, opts Options) ([]Finding, error) {
 	}
 
 	return findings, nil
+}
+
+// findMatches runs the pattern-based and entropy-based detectors against a
+// single line, returning a Finding per match with Path, Line, and Commit
+// left for the caller to fill in.
+func findMatches(line string, opts Options) []Finding {
+	var findings []Finding
+
+	for _, d := range Detectors {
+		for _, match := range d.Pattern.FindAllString(line, -1) {
+			findings = append(findings, Finding{
+				Token:    match,
+				Detector: d.Name,
+			})
+		}
+	}
+
+	for _, token := range strings.Fields(line) {
+		token = strings.Trim(token, trimSet)
+		if len(token) < opts.MinLength {
+			continue
+		}
+
+		entropy := ShannonEntropy(token)
+		if entropy < opts.EntropyThreshold {
+			continue
+		}
+
+		findings = append(findings, Finding{
+			Token:    token,
+			Detector: "entropy",
+			Entropy:  entropy,
+		})
+	}
+
+	return findings
 }
