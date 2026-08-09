@@ -22,8 +22,14 @@ Every line of a scanned file is checked against two kinds of detector:
   exceeds a threshold, which catches high-randomness strings like generated
   API keys that don't match a known format.
 
-Exit status is non-zero when a possible secret is found, so it can be used
-as a CI check.
+Exit status distinguishes a clean scan from a broken one, so a CI step can
+tell "found secrets" apart from "the scan itself failed":
+
+| Exit status | Meaning |
+|---|---|
+| `0` | No findings |
+| `1` | One or more possible secrets found |
+| `2` | The scan couldn't run (bad arguments, unreadable path, git failure) |
 
 ### Ignoring files
 
@@ -53,12 +59,32 @@ Findings from history include the commit that introduced the line:
 config.yml@a1b2c3d:1: possible secret (AWS Access Key ID): AKIA...
 ```
 
+### JSON output
+
+`-format json` prints findings as a JSON array instead of the default
+human-readable lines, for feeding into other tooling:
+
+```bash
+go run . -format json path/to/directory
+```
+
+```json
+[
+  {
+    "path": "config.yml",
+    "line": 1,
+    "token": "AKIAIOSFODNN7EXAMPLE",
+    "detector": "AWS Access Key ID"
+  }
+]
+```
+
 ## Status
 
 Early and under active development. Scans a single file, a directory tree,
 or a repository's commit history, using pattern-based detectors for AWS
 keys, GitHub tokens, and private key headers, plus entropy-based detection
-for everything else.
+for everything else. Output is available as plain text or JSON.
 
 ## Development
 
