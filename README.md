@@ -37,12 +37,28 @@ go run . -ignore '*.log' -ignore 'testdata/' path/to/directory
 A pattern ending in `/` matches directories only. Patterns are matched
 against both a file's base name and its path relative to the scan root.
 
+### Scanning git history
+
+`-history` scans commit history instead of the working tree. Each commit's
+diff is checked, so secrets caught this way are reported even if a later
+commit removed them:
+
+```bash
+go run . -history path/to/repo
+```
+
+Findings from history include the commit that introduced the line:
+
+```
+config.yml@a1b2c3d:1: possible secret (AWS Access Key ID): AKIA...
+```
+
 ## Status
 
-Early and under active development. Scans a single file or a directory
-tree, using pattern-based detectors for AWS keys, GitHub tokens, and
-private key headers, plus entropy-based detection for everything else. A
-git history scan mode is in progress.
+Early and under active development. Scans a single file, a directory tree,
+or a repository's commit history, using pattern-based detectors for AWS
+keys, GitHub tokens, and private key headers, plus entropy-based detection
+for everything else.
 
 ## Development
 
